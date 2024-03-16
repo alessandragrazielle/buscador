@@ -46,10 +46,10 @@ def ler_arquivos_pasta(diretorio='./pages'):
 
 ler_arquivos_pasta()
 
-def search_term(url, termo):
+def search_term(path, termo):
     pontos = 0
 
-    with open(url, 'r', encoding='utf-8') as file:
+    with open(path, 'r', encoding='utf-8') as file:
         content = file.read()
         soup = BeautifulSoup(content, 'html.parser')
         count_terms = soup.find_all(termo)
