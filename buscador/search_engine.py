@@ -120,7 +120,7 @@ def ler_arquivos_pasta(diretorio='./pages'):
             #print(f'A página {arquivo} recebeu {pontos_frescor} pontos pelo FRESCOR DO CONTEUDO \n')
 
             #pontos totais
-            pontos_totais = pontos_autoridade + pontos_termos + pontos_tags + pontos_frescor
+            pontos_totais = pontos_autoridade + pontos_termos + pontos_tags + pontos_autoreferencia + pontos_frescor
 
             #deve ser exibida?
             exibicao = ''
