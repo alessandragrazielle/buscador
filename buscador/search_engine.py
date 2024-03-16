@@ -72,10 +72,6 @@ def ler_arquivos_pasta(diretorio='./pages'):
             conteudo = f.read()
             search_links(conteudo, arquivo)
 
-            #calcula os pontos pelos links - questao 2.a
-            pontos = calcular_pontos_para_pagina(arquivo)
-            print(f'A página {arquivo} recebeu {pontos} pontos pela AUTORIDADE')
-
             #calcula os pontos das tags - questao 2.c
             pontos_tags = calcular_pontos_tags(conteudo)
             print(f'A página {arquivo} recebeu {pontos_tags} pontos pelo USO EM TAGS')
@@ -83,6 +79,11 @@ def ler_arquivos_pasta(diretorio='./pages'):
             #calcula os pontos pelo tempo - questao 2.e
             pontos_frescor = calcular_pontos_frescor(conteudo)
             print(f'A página {arquivo} recebeu {pontos_frescor} pontos pelo FRESCOR DO CONTEUDO \n')
+
+
+    for arquivo in arquivos:
+        pontos = calcular_pontos_para_pagina(arquivo)
+        print(f'A página {arquivo} recebeu {pontos} pontos')
 
 
 ler_arquivos_pasta()
