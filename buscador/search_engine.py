@@ -2,13 +2,28 @@ import os
 from bs4 import BeautifulSoup
 from datetime import datetime
 import pandas as pd
+import json
 
 
-visited_links = {}
+visited_links = set()  # Usando um conjunto para armazenar os links visitados
 link_to_page = {}
+storage_links = []
 
 
-#questao 2.a
+def load_scores_from_json(file_path):
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Erro ao carregar pontuações do arquivo JSON: {e}")
+        return {}
+
+
+# Carregar as pontuações do arquivo JSON
+scores = load_scores_from_json('pontuacoes.json')
+
+
+# Questão 2.a
 def search_links(content, page):
     pontos = 0
 
@@ -18,126 +33,175 @@ def search_links(content, page):
         href = link.get('href')
         if href:
             if href not in visited_links:
-                visited_links[href] = visited_links.get(href, 0) + 1
+                visited_links.add(href)
+                armazenar_links(href)
             if href == page:
-                pontos += 20  
+                pontos += scores.get('autoridade')
             link_to_page[href] = link_to_page.get(href, []) + [page]
-
 
 
 def calcular_pontos_para_pagina(page):
     pontos = 0
     for linked_page in link_to_page.get(page, []):
-        pontos += 20  
+        pontos += scores.get('autoridade')
     return pontos
 
 
-#questao 2.b
+# Questão 2.b
 termo_pesquisado = input('Sobre o que quer pesquisar? ')
+
+
 def calcular_pontos_termos(content, termo):
     pontos = 0
 
-    soup = BeautifulSoup(content, 'html.parser') 
-    
-    pontos += len(soup.find_all(string = lambda text: termo_pesquisado.lower() in text.lower())) * 5
-     
+    try:
+        soup = BeautifulSoup(content, 'html.parser')
+        # Encontra todo o conteúdo de texto dentro das tags <head> e <body>, excluindo as ocorrências dentro das tags <a>
+        textos = [texto for texto in soup.find_all(text=True) if not (texto.parent.name == 'a' or texto.parent.name in ['script', 'style'])]
+        # Verifica se o termo está presente nos textos e conta as ocorrências
+        ocorrencias = sum(texto.lower().count(termo.lower()) for texto in textos)
+        # Multiplica o número de ocorrências pelo valor definido para os termos e adiciona ao total de pontos
+        pontos += ocorrencias * scores.get('termos')
+    except Exception as e:
+        print(f"Erro ao calcular pontos pelos termos: {e}")
+
     return pontos
 
 
-#questao 2.c
+# Questão 2.c
 def calcular_pontos_tags(content):
     pontos = 0
-    soup = BeautifulSoup(content, 'html.parser')
-  
-    pontos += len(soup.find_all('h1')) * 20
-    pontos += len(soup.find_all('h2')) * 10
-    pontos += len(soup.find_all('p')) * 5
-    pontos += len(soup.find_all('a')) * 2
+
+    try:
+        soup = BeautifulSoup(content, 'html.parser')
+        for tag, score in scores.get('tags', {}).items():
+            pontos += len(soup.find_all(tag)) * score
+    except Exception as e:
+        print(f"Erro ao calcular pontos pelas tags: {e}")
 
     return pontos
 
 
-#questao 2.d (FALTA FAZER)
-def calcular_pontos_autoreferencia():
+# Questão 2.d
+def calcular_pontos_autoreferencia(page, content):
     pontos = 0
 
+    try:
+        soup = BeautifulSoup(content, 'html.parser')
+        links = soup.find_all('a', href=lambda href: href == page)
+
+        if links:
+            pontos = scores.get('autoreferencia')
+    except Exception as e:
+        print(f"Erro ao calcular pontos de autoreferência: {e}")
+
     return pontos
 
 
-#questao 2.e
+# Questão 2.e
 def calcular_pontos_frescor(conteudo):
     pontos = 0
-    soup = BeautifulSoup(conteudo, 'html.parser')
 
-    data_publicacao = soup.find('p', string=lambda text: 'Data da Publicação:' in text or 'Data de postagem:' in text)
-    
-    if data_publicacao:
-        data_publicacao_texto = data_publicacao.get_text(strip=True)
-        ano_publicacao = int(data_publicacao_texto.split('/')[-1])
-        ano_atual = datetime.now().year
-    
-        diferenca_anos = ano_atual - ano_publicacao
-        pontos = 30 - diferenca_anos * 5
-        
-        return pontos
+    try:
+        soup = BeautifulSoup(conteudo, 'html.parser')
+        data_publicacao = soup.find('p', string=lambda text: 'Data da Publicação:' in text or 'Data de postagem:' in text)
+
+        if data_publicacao:
+            data_publicacao_texto = data_publicacao.get_text(strip=True)
+            ano_publicacao = int(data_publicacao_texto.split('/')[-1])
+            ano_atual = datetime.now().year
+
+            diferenca_anos = ano_atual - ano_publicacao
+
+            if diferenca_anos == 0:
+                pontos += 30
+            else:
+                pontos -= diferenca_anos * scores.get('frescor')
+
+    except Exception as e:
+        print(f"Erro ao calcular pontos de frescor do conteúdo: {e}")
+
+    return pontos
 
 
-def ler_arquivos_pasta(diretorio='./pages'):
+# Função para carregar o conteúdo da página local
+def load_content_from_local_file(file_path):
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except Exception as e:
+        print(f"Erro ao carregar conteúdo do arquivo local: {e}")
+        return None
+
+
+# Função para armazenar links encontrados
+def armazenar_links(link):
+    if link not in storage_links:
+        storage_links.append(link)
+
+
+def main(diretorio='./pages'):
     itens = os.listdir(diretorio)
     arquivos = [item for item in itens if os.path.isfile(os.path.join(diretorio, item))]
 
     for arquivo in arquivos:
         caminho_completo = os.path.join(diretorio, arquivo)
-        with open(caminho_completo, 'r', encoding='utf-8') as f:
-            conteudo = f.read()
+        conteudo = load_content_from_local_file(caminho_completo)
+        if conteudo:
             search_links(conteudo, arquivo)
 
-    
     resultados = []
-    #calcula os pontos
+    # Calcula os pontos
     for arquivo in arquivos:
         caminho_completo = os.path.join(diretorio, arquivo)
-        with open(caminho_completo, 'r', encoding='utf-8') as f:
-            conteudo = f.read()
-        
-            #calcula os pontos da autoridade - questao 2.a
+        conteudo = load_content_from_local_file(caminho_completo)
+        if conteudo:
+
+            # Calcula os pontos da autoridade - Questão 2.a
             pontos_autoridade = calcular_pontos_para_pagina(arquivo)
-            #print(f'A página {arquivo} recebeu {pontos} pontos')
 
-            #calcula os pontos pelo termo - questao 2.b
+            # Calcula os pontos pelo termo - Questão 2.b
             pontos_termos = calcular_pontos_termos(conteudo, termo_pesquisado)
-            #print(f'A página {arquivo} recebeu {pontos_termos} pontos pela quantidade de TERMOS')
 
-            #calcula os pontos das tags - questao 2.c
+            # Calcula os pontos das tags - Questão 2.c
             pontos_tags = calcular_pontos_tags(conteudo)
-            #print(f'A página {arquivo} recebeu {pontos_tags} pontos pelo USO EM TAGS')
 
-            #calcula os pontos da autoreferencia - questao 2.d
-            pontos_autoreferencia = calcular_pontos_autoreferencia()
+            # Calcula os pontos da autoreferência - Questão 2.d
+            pontos_autoreferencia = calcular_pontos_autoreferencia(arquivo, conteudo)
 
-            #calcula os pontos pelo tempo - questao 2.e
+            # Calcula os pontos pelo tempo - Questão 2.e
             pontos_frescor = calcular_pontos_frescor(conteudo)
-            #print(f'A página {arquivo} recebeu {pontos_frescor} pontos pelo FRESCOR DO CONTEUDO \n')
 
-            #pontos totais
+            # Pontos totais
             pontos_totais = pontos_autoridade + pontos_termos + pontos_tags + pontos_autoreferencia + pontos_frescor
 
-            #deve ser exibida?
-            exibicao = ''
-            if(pontos_termos > 0): exibicao = "Sim"
-            else: exibicao = 'Não'
+            # Deve ser exibida?
+            exibicao = "Sim" if pontos_termos > 0 else "Não"
 
-            #coloca os resultados em uma lista
-            resultados.append([arquivo, pontos_autoridade, pontos_termos, pontos_tags, pontos_autoreferencia, pontos_frescor, pontos_totais, exibicao])
+            # Coloca os resultados em uma lista
+            resultados.append([arquivo, pontos_autoridade, pontos_termos, pontos_tags, pontos_autoreferencia,
+                               pontos_frescor, pontos_totais, exibicao])
 
-    
-    #questao 03 - ranqueia os resultados, usando criterios de desempate da lista de resultados
-    ranking = sorted(resultados, key = lambda x: (x[6], x[2], x[5], x[1]), reverse=True) 
-    
-    #questao 07 - criacao da planilha com os resultados
-    planilha = pd.DataFrame(ranking, columns=['Pagina', 'Autoridade', 'Frequencia dos termos', 'Uso em tags', 'Autoreferencia', 'Frescor do conteudo', 'Total', 'Deve ser exibida'])
+    # Questão 03 - Ranqueia os resultados, usando critérios de desempate da lista de resultados
+    ranking = sorted(resultados, key=lambda x: (x[6], x[2], x[5], x[1]), reverse=True)
+
+    # Questão 07 - Criação da planilha com os resultados
+    planilha = pd.DataFrame(ranking, columns=['Pagina', 'Autoridade', 'Frequencia dos termos', 'Uso em tags',
+                                              'Autoreferencia', 'Frescor do conteudo', 'Total', 'Deve ser exibida'])
     planilha.to_excel('resultados.xlsx', index=False)
     print("Planilha com os resultados salvos em 'resultados.xlsx'")
-    
 
-ler_arquivos_pasta()
+    # Imprime os links armazenados
+    print("\nLinks armazenados:")
+    for link in storage_links:
+        print(link)
+
+    # Baixa e processa as páginas referenciadas
+    for link in storage_links:
+        print(f"\nProcessando página referenciada: {link}")
+        conteudo_referenciado = load_content_from_local_file(os.path.join(diretorio, link))
+        if conteudo_referenciado:
+            search_links(conteudo_referenciado, link)
+
+
+main()
