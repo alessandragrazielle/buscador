@@ -81,19 +81,24 @@ def calcular_pontos_tags(content, termo):
         # Verifica se a pontuação para as tags está disponível no arquivo JSON
         if 'tags' in scores:
             tags_scores = scores['tags']
-            title_score = tags_scores.get('title', 0)
-            meta_score = tags_scores.get('meta', 0)
-            h1_score = tags_scores.get('h1', 0)
-            h2_score = tags_scores.get('h2', 0)
-            p_score = tags_scores.get('p', 0)
-            a_score = tags_scores.get('a', 0)
             
             # Calcula os pontos para cada tipo de tag
-            pontos += len(soup.find_all(['title', 'meta'], string=lambda text: termo.lower() in text.lower())) * title_score
-            pontos += len(soup.find_all('h1', string=lambda text: termo.lower() in text.lower())) * h1_score * 15
-            pontos += len(soup.find_all('h2', string=lambda text: termo.lower() in text.lower())) * h2_score * 10
-            pontos += len(soup.find_all('p', string=lambda text: termo.lower() in text.lower())) * p_score * 5
-            pontos += len(soup.find_all('a', string=lambda text: termo.lower() in text.lower())) * a_score * 2
+            title_tags = soup.find_all('title')
+            if title_tags:
+                for tag in title_tags:
+                    if termo.lower() in tag.get_text().lower():
+                        pontos += tags_scores.get('title', 0)
+
+            meta_tags = soup.find_all('meta')
+            if meta_tags:
+                for tag in meta_tags:
+                    if termo.lower() in tag.get('content', '').lower():
+                        pontos += tags_scores.get('meta', 0)
+
+            pontos += len(soup.find_all('h1', string=lambda text: termo.lower() in text.lower())) * tags_scores.get('h1', 0)
+            pontos += len(soup.find_all('h2', string=lambda text: termo.lower() in text.lower())) * tags_scores.get('h2', 0)
+            pontos += len(soup.find_all('p', string=lambda text: termo.lower() in text.lower())) * tags_scores.get('p', 0)
+            pontos += len(soup.find_all('a', string=lambda text: termo.lower() in text.lower())) * tags_scores.get('a', 0)
         else:
             print("As pontuações para as tags não foram encontradas no arquivo JSON.")
 
@@ -101,8 +106,6 @@ def calcular_pontos_tags(content, termo):
         print(f"Erro ao calcular pontos pelas tags: {e}")
 
     return pontos
-
-
 
 
 
@@ -146,11 +149,6 @@ def calcular_pontos_frescor(conteudo):
     except Exception as e:
         print(f"Erro ao calcular pontos de frescor do conteúdo: {e}")
         return 0
-
-# Teste de impressão dos resultados
-anos_teste = [-3, -2, 0, 4, -8]
-for ano in anos_teste:
-    print(f"Frescor do conteúdo (+30/-5/ano): {calcular_pontos_frescor('Data de postagem: {}/2024'.format(ano))}")
 
 
 
@@ -222,7 +220,7 @@ def main(diretorio='./pages'):
                                               'Uso em tags',
                                               'Autoreferencia', 
                                               'Frescor do conteudo', 
-                                              'Total', 
+                                              'Total',  
                                               'Deve ser exibida'
                                               ])
     planilha.to_excel('resultados.xlsx', index=False)
