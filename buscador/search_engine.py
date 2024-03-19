@@ -56,8 +56,11 @@ def calcular_pontos_termos(content, termo):
 
     try:
         soup = BeautifulSoup(content, 'html.parser')
-        # Encontra todo o conteúdo de texto dentro das tags <head> e <body>, excluindo as ocorrências dentro das tags <a>
-        textos = [texto for texto in soup.find_all(text=True) if not (texto.parent.name == 'a' or texto.parent.name in ['script', 'style'])]
+        # Encontra todo o conteúdo de texto dentro do HTML, incluindo o texto das tags <title> e <meta>, mas excluindo as ocorrências dentro das tags <script>, <style> e <a>
+        textos = [texto for texto in soup.find_all(string=True, recursive=True) if not (texto.parent.name == '<a>' or (texto.parent.name == '<a>' and texto.parent.get_text(strip=True) == texto))]
+        textos += [texto['content'] for texto in soup.find_all('meta', content=True)]  # Adiciona o texto das tags <meta> ao conteúdo
+        textos += [texto['content'] for texto in soup.find_all('title', content=True)]  # Adiciona o texto das tags <meta> ao conteúdo
+
         # Verifica se o termo está presente nos textos e conta as ocorrências
         ocorrencias = sum(texto.lower().count(termo.lower()) for texto in textos)
         # Multiplica o número de ocorrências pelo valor definido para os termos e adiciona ao total de pontos
@@ -69,17 +72,39 @@ def calcular_pontos_termos(content, termo):
 
 
 # Questão 2.c
-def calcular_pontos_tags(content):
+def calcular_pontos_tags(content, termo):
     pontos = 0
 
     try:
         soup = BeautifulSoup(content, 'html.parser')
-        for tag, score in scores.get('tags', {}).items():
-            pontos += len(soup.find_all(tag)) * score
+        
+        # Verifica se a pontuação para as tags está disponível no arquivo JSON
+        if 'tags' in scores:
+            tags_scores = scores['tags']
+            title_score = tags_scores.get('title', 0)
+            meta_score = tags_scores.get('meta', 0)
+            h1_score = tags_scores.get('h1', 0)
+            h2_score = tags_scores.get('h2', 0)
+            p_score = tags_scores.get('p', 0)
+            a_score = tags_scores.get('a', 0)
+            
+            # Calcula os pontos para cada tipo de tag
+            pontos += len(soup.find_all(['title', 'meta'], string=lambda text: termo.lower() in text.lower())) * title_score
+            pontos += len(soup.find_all('h1', string=lambda text: termo.lower() in text.lower())) * h1_score * 15
+            pontos += len(soup.find_all('h2', string=lambda text: termo.lower() in text.lower())) * h2_score * 10
+            pontos += len(soup.find_all('p', string=lambda text: termo.lower() in text.lower())) * p_score * 5
+            pontos += len(soup.find_all('a', string=lambda text: termo.lower() in text.lower())) * a_score * 2
+        else:
+            print("As pontuações para as tags não foram encontradas no arquivo JSON.")
+
     except Exception as e:
         print(f"Erro ao calcular pontos pelas tags: {e}")
 
     return pontos
+
+
+
+
 
 
 # Questão 2.d
@@ -100,8 +125,6 @@ def calcular_pontos_autoreferencia(page, content):
 
 # Questão 2.e
 def calcular_pontos_frescor(conteudo):
-    pontos = 0
-
     try:
         soup = BeautifulSoup(conteudo, 'html.parser')
         data_publicacao = soup.find('p', string=lambda text: 'Data da Publicação:' in text or 'Data de postagem:' in text)
@@ -114,14 +137,21 @@ def calcular_pontos_frescor(conteudo):
             diferenca_anos = ano_atual - ano_publicacao
 
             if diferenca_anos == 0:
-                pontos += 30
+                return 30
             else:
-                pontos -= diferenca_anos * scores.get('frescor')
+                return -5 * diferenca_anos
+        else:
+            return 0
 
     except Exception as e:
         print(f"Erro ao calcular pontos de frescor do conteúdo: {e}")
+        return 0
 
-    return pontos
+# Teste de impressão dos resultados
+anos_teste = [-3, -2, 0, 4, -8]
+for ano in anos_teste:
+    print(f"Frescor do conteúdo (+30/-5/ano): {calcular_pontos_frescor('Data de postagem: {}/2024'.format(ano))}")
+
 
 
 # Função para carregar o conteúdo da página local
@@ -164,7 +194,7 @@ def main(diretorio='./pages'):
             pontos_termos = calcular_pontos_termos(conteudo, termo_pesquisado)
 
             # Calcula os pontos das tags - Questão 2.c
-            pontos_tags = calcular_pontos_tags(conteudo)
+            pontos_tags = calcular_pontos_tags(conteudo, termo_pesquisado)
 
             # Calcula os pontos da autoreferência - Questão 2.d
             pontos_autoreferencia = calcular_pontos_autoreferencia(arquivo, conteudo)
@@ -186,8 +216,15 @@ def main(diretorio='./pages'):
     ranking = sorted(resultados, key=lambda x: (x[6], x[2], x[5], x[1]), reverse=True)
 
     # Questão 07 - Criação da planilha com os resultados
-    planilha = pd.DataFrame(ranking, columns=['Pagina', 'Autoridade', 'Frequencia dos termos', 'Uso em tags',
-                                              'Autoreferencia', 'Frescor do conteudo', 'Total', 'Deve ser exibida'])
+    planilha = pd.DataFrame(ranking, columns=['Pagina', 
+                                              'Autoridade', 
+                                              'Frequencia dos termos', 
+                                              'Uso em tags',
+                                              'Autoreferencia', 
+                                              'Frescor do conteudo', 
+                                              'Total', 
+                                              'Deve ser exibida'
+                                              ])
     planilha.to_excel('resultados.xlsx', index=False)
     print("Planilha com os resultados salvos em 'resultados.xlsx'")
 

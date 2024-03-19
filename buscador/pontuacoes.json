@@ -2,6 +2,8 @@
     "autoridade": 20,
     "termos": 5,
     "tags": {
+      "title":20,
+      "meta":20,
       "h1": 15,
       "h2": 10,
       "p": 5,
