@@ -72,33 +72,49 @@ def calcular_pontos_termos(content, termo):
 
 
 # Questão 2.c
+def buscar_ocorrencias_tag(soup, tag_name, termo):
+    pontos = 0
+    tags_scores = scores['tags']
+    tags = soup.find_all(tag_name)
+    if tags:
+        for tag in tags:
+            if termo.lower() in tag.get_text().lower():
+                pontos += tags_scores.get(tag_name, 0)
+    return pontos
+
+def buscar_ocorrencias_title(soup, termo):
+    pontos = 0
+    tags_scores = scores['tags']
+    title_tags = soup.find_all('title')
+    if title_tags:
+        for tag in title_tags:
+            if termo.lower() in tag.get_text().lower():
+                pontos += tags_scores.get('title', 0)
+    return pontos
+
+def buscar_ocorrencias_meta(soup, termo):
+    pontos = 0
+    tags_scores = scores['tags']
+    meta_tags = soup.find_all('meta')
+    if meta_tags:
+        for tag in meta_tags:
+            if termo.lower() in tag.get('content', '').lower() or termo.lower() in tag.get('name', '').lower():
+                pontos += tags_scores.get('meta', 0)
+    return pontos
+
 def calcular_pontos_tags(content, termo):
     pontos = 0
 
     try:
         soup = BeautifulSoup(content, 'html.parser')
         
-        # Verifica se a pontuação para as tags está disponível no arquivo JSON
         if 'tags' in scores:
-            tags_scores = scores['tags']
-            
-            # Calcula os pontos para cada tipo de tag
-            title_tags = soup.find_all('title')
-            if title_tags:
-                for tag in title_tags:
-                    if termo.lower() in tag.get_text().lower():
-                        pontos += tags_scores.get('title', 0)
-
-            meta_tags = soup.find_all('meta')
-            if meta_tags:
-                for tag in meta_tags:
-                    if termo.lower() in tag.get('content', '').lower():
-                        pontos += tags_scores.get('meta', 0)
-
-            pontos += len(soup.find_all('h1', string=lambda text: termo.lower() in text.lower())) * tags_scores.get('h1', 0)
-            pontos += len(soup.find_all('h2', string=lambda text: termo.lower() in text.lower())) * tags_scores.get('h2', 0)
-            pontos += len(soup.find_all('p', string=lambda text: termo.lower() in text.lower())) * tags_scores.get('p', 0)
-            pontos += len(soup.find_all('a', string=lambda text: termo.lower() in text.lower())) * tags_scores.get('a', 0)
+            pontos += buscar_ocorrencias_title(soup, termo)
+            pontos += buscar_ocorrencias_meta(soup, termo)
+            pontos += buscar_ocorrencias_tag(soup, 'h1', termo)
+            pontos += buscar_ocorrencias_tag(soup, 'h2', termo)
+            pontos += buscar_ocorrencias_tag(soup, 'p', termo)
+            pontos += buscar_ocorrencias_tag(soup, 'a', termo)
         else:
             print("As pontuações para as tags não foram encontradas no arquivo JSON.")
 
