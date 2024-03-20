@@ -56,10 +56,10 @@ def calcular_pontos_termos(content, termo):
 
     try:
         soup = BeautifulSoup(content, 'html.parser')
-        
+        # Encontra todo o conteúdo de texto dentro do HTML, incluindo o texto das tags <title> e <meta>, mas excluindo as ocorrências dentro das tags <script>, <style> e <a>
         textos = [texto for texto in soup.find_all(string=True, recursive=True) if not (texto.parent.name == '<a>' or (texto.parent.name == '<a>' and texto.parent.get_text(strip=True) == texto))]
-        textos += [texto['content'] for texto in soup.find_all('meta', content=True)]  
-        textos += [texto['content'] for texto in soup.find_all('title', content=True)] 
+        textos += [texto['content'] for texto in soup.find_all('meta', content=True)]  # Adiciona o texto das tags <meta> ao conteúdo
+        textos += [texto['content'] for texto in soup.find_all('title', content=True)]  # Adiciona o texto das tags <meta> ao conteúdo
 
         # Verifica se o termo está presente nos textos e conta as ocorrências
         ocorrencias = sum(texto.lower().count(termo.lower()) for texto in textos)
@@ -148,9 +148,10 @@ def calcular_pontos_frescor(conteudo):
         data_publicacao = soup.find('p', string=lambda text: 'Data da Publicação:' in text or 'Data de postagem:' in text)
 
         if data_publicacao:
-            data_publicacao_texto = data_publicacao.get_text(strip=True)    
+            data_publicacao_texto = data_publicacao.get_text(strip=True) 
             ano_publicacao = int(data_publicacao_texto.split('/')[-1]) 
             ano_atual = datetime.now().year
+
             diferenca_anos = ano_atual - ano_publicacao
 
             return 30 - diferenca_anos * 5
