@@ -5,7 +5,7 @@ import pandas as pd
 import json
 
 
-visited_links = set() 
+visited_links = set()  # Usando um conjunto para armazenar os links visitados
 link_to_page = {}
 storage_links = []
 
@@ -23,7 +23,7 @@ def load_scores_from_json(file_path):
 scores = load_scores_from_json('pontuacoes.json')
 
 
-#questao 2.a
+# Questão 2.a
 def search_links(content, page):
     pontos = 0
 
@@ -33,28 +33,30 @@ def search_links(content, page):
         href = link.get('href')
         if href:
             if href not in visited_links:
-                visited_links[href] = visited_links.get(href, 0) + 1
+                visited_links.add(href)
+                armazenar_links(href)
             if href == page:
-                pontos += 20  
+                pontos += scores.get('autoridade')
             link_to_page[href] = link_to_page.get(href, []) + [page]
-
 
 
 def calcular_pontos_para_pagina(page):
     pontos = 0
     for linked_page in link_to_page.get(page, []):
-        pontos += 20  
+        pontos += scores.get('autoridade')
     return pontos
 
 
-#questao 2.b
+# Questão 2.b
 termo_pesquisado = input('Sobre o que quer pesquisar? ')
+
+
 def calcular_pontos_termos(content, termo):
     pontos = 0
 
     try:
         soup = BeautifulSoup(content, 'html.parser')
-
+        # Encontra todo o conteúdo de texto dentro do HTML, incluindo o texto das tags <title> e <meta>, mas excluindo as ocorrências dentro das tags <script>, <style> e <a>
         textos = [texto for texto in soup.find_all(string=True, recursive=True) if not (texto.parent.name == '<a>' or (texto.parent.name == '<a>' and texto.parent.get_text(strip=True) == texto))]
         textos += [texto['content'] for texto in soup.find_all('meta', content=True)]  # Adiciona o texto das tags <meta> ao conteúdo
         textos += [texto['content'] for texto in soup.find_all('title', content=True)]  # Adiciona o texto das tags <meta> ao conteúdo
@@ -69,7 +71,7 @@ def calcular_pontos_termos(content, termo):
     return pontos
 
 
-#questao 2.c
+# Questão 2.c
 def buscar_ocorrencias_tag(soup, tag_name, termo):
     pontos = 0
     tags_scores = scores['tags']
@@ -79,6 +81,7 @@ def buscar_ocorrencias_tag(soup, tag_name, termo):
             ocorrencias = tag.get_text().lower().count(termo.lower())
             pontos += ocorrencias * tags_scores.get(tag_name, 0)
     return pontos
+
 
 def buscar_ocorrencias_title(soup, termo):
     pontos = 0
@@ -122,7 +125,7 @@ def calcular_pontos_tags(content, termo):
     return pontos
 
 
-#questao 2.d 
+# Questão 2.d
 def calcular_pontos_autoreferencia(page, content):
     pontos = 0
 
@@ -138,16 +141,19 @@ def calcular_pontos_autoreferencia(page, content):
     return pontos
 
 
-#questao 2.e
+# Questão 2.e
 def calcular_pontos_frescor(conteudo):
     try:
         soup = BeautifulSoup(conteudo, 'html.parser')
         data_publicacao = soup.find('p', string=lambda text: 'Data da Publicação:' in text or 'Data de postagem:' in text)
 
         if data_publicacao:
-            data_publicacao_texto = data_publicacao.get_text(strip=True)
-            ano_publicacao = int(data_publicacao_texto.split('/')[-1])
+            data_publicacao_texto = data_publicacao.get_text(strip=True) #: Extrai o texto da tag <p> encontrada, removendo espaços em branco extras no início e no final. 
+            #strip=True na função get_text() indica que qualquer espaço em branco no início e no final do texto será removido
+            ano_publicacao = int(data_publicacao_texto.split('/')[-1]) # Divide o texto da data usando o caractere "/" como delimitador e pega o último elemento da lista resultante, que deve ser o ano de publicação. Converte esse ano para um número inteiro.
+            #O método split() em Python é usado para dividir uma string em uma lista de substrings com base em um separador especificado. Quando você chama split('/'), por exemplo, está dizendo ao Python para dividir a string onde encontrar o caractere de barra ("/").
             ano_atual = datetime.now().year
+
             diferenca_anos = ano_atual - ano_publicacao
 
             return 30 - diferenca_anos * 5
@@ -157,6 +163,7 @@ def calcular_pontos_frescor(conteudo):
     except Exception as e:
         print(f"Erro ao calcular pontos de frescor do conteúdo: {e}")
         return 0
+
 
 
 # Função para carregar o conteúdo da página local
