@@ -56,10 +56,10 @@ def calcular_pontos_termos(content, termo):
 
     try:
         soup = BeautifulSoup(content, 'html.parser')
-        # Encontra todo o conteúdo de texto dentro do HTML, incluindo o texto das tags <title> e <meta>, mas excluindo as ocorrências dentro das tags <script>, <style> e <a>
+        
         textos = [texto for texto in soup.find_all(string=True, recursive=True) if not (texto.parent.name == '<a>' or (texto.parent.name == '<a>' and texto.parent.get_text(strip=True) == texto))]
-        textos += [texto['content'] for texto in soup.find_all('meta', content=True)]  # Adiciona o texto das tags <meta> ao conteúdo
-        textos += [texto['content'] for texto in soup.find_all('title', content=True)]  # Adiciona o texto das tags <meta> ao conteúdo
+        textos += [texto['content'] for texto in soup.find_all('meta', content=True)]  
+        textos += [texto['content'] for texto in soup.find_all('title', content=True)] 
 
         # Verifica se o termo está presente nos textos e conta as ocorrências
         ocorrencias = sum(texto.lower().count(termo.lower()) for texto in textos)
@@ -148,12 +148,9 @@ def calcular_pontos_frescor(conteudo):
         data_publicacao = soup.find('p', string=lambda text: 'Data da Publicação:' in text or 'Data de postagem:' in text)
 
         if data_publicacao:
-            data_publicacao_texto = data_publicacao.get_text(strip=True) #: Extrai o texto da tag <p> encontrada, removendo espaços em branco extras no início e no final. 
-            #strip=True na função get_text() indica que qualquer espaço em branco no início e no final do texto será removido
-            ano_publicacao = int(data_publicacao_texto.split('/')[-1]) # Divide o texto da data usando o caractere "/" como delimitador e pega o último elemento da lista resultante, que deve ser o ano de publicação. Converte esse ano para um número inteiro.
-            #O método split() em Python é usado para dividir uma string em uma lista de substrings com base em um separador especificado. Quando você chama split('/'), por exemplo, está dizendo ao Python para dividir a string onde encontrar o caractere de barra ("/").
+            data_publicacao_texto = data_publicacao.get_text(strip=True)    
+            ano_publicacao = int(data_publicacao_texto.split('/')[-1]) 
             ano_atual = datetime.now().year
-
             diferenca_anos = ano_atual - ano_publicacao
 
             return 30 - diferenca_anos * 5
