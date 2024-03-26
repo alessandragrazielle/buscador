@@ -141,10 +141,8 @@ class Buscador:
 
                 diferenca_anos = ano_atual - ano_publicacao
 
-                if diferenca_anos == 0:
-                    return 30
-                else:
-                    return -5 * diferenca_anos
+                return 30 - (diferenca_anos * 5)
+            
             else:
                 return 0
 
