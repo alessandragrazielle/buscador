@@ -1,5 +1,7 @@
 # Buscador
+
 ## Bibliotecas
+
 ### pandas: 
 #### Instalação - pip install pandas
 #### Importação - import pandas as pd
